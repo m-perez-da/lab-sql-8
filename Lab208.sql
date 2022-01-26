@@ -97,17 +97,21 @@ ORDER BY Number_of_Times DESC;
 
 -- 9. For each film, list actor that has acted in more films
 
--- INCOMPLETE
-
-SELECT film_id, actor_id
+SELECT f.title, y.first_name, y.last_name, appearances
 FROM (
-SELECT DISTINCT fa1.film_id AS film_id, fa1.actor_id AS actor_id   -- actors_id by film_id
-FROM sakila.film_actor fa1
-INNER JOIN sakila.film_actor fa2
-USING (film_id)
-ORDER BY film_id ASC) sub
- ;
- 
-SELECT actor_id, COUNT(actor_id) As Counter   -- number of films by actor_id
-FROM sakila.film_actor
-GROUP BY actor_id;
+SELECT x.film_id, x.actor_id, a.first_name, a.last_name, appearances
+FROM 
+	(SELECT fa.film_id, fa.actor_id, appearances, row_number() 
+    OVER (partition by fa.film_id ORDER BY appearances DESC) AS row_num
+    FROM sakila.film_actor fa
+    INNER JOIN (
+		SELECT fa.actor_id, COUNT(*) AS appearances
+        FROM sakila.film_actor fa
+        GROUP BY fa.actor_id
+        ORDER BY appearances DESC) ap
+        ON ap.actor_id=fa.actor_id) x
+	INNER JOIN sakila.actor a
+    ON x.actor_id=a.actor_id
+    WHERE x.row_num=1) y
+    JOIN sakila.film f
+    ON (f.film_id=y.film_id);
